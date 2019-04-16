@@ -5,30 +5,7 @@
  */
 package khttp.extensions
 
-import khttp.structures.files.FileLike
-import java.io.File
 import java.io.Writer
-import java.nio.file.Path
-
-/**
- * Creates a [FileLike] from this File and [name]. If [name] is not specified, the filename will be used.
- */
-fun File.fileLike(name: String = this.name) = FileLike(name, this)
-
-/**
- * Creates a [FileLike] from the Path.
- */
-fun Path.fileLike() = FileLike(this)
-
-/**
- * Creates a [FileLike] from this Path and [name]. If [name] is not specified, the filename will be used.
- */
-fun Path.fileLike(name: String) = FileLike(name, this)
-
-/**
- * Creates a [FileLike] from this String and [name].
- */
-fun String.fileLike(name: String) = FileLike(name, this)
 
 /**
  * Writes [string] to this writer and then calls [Writer#flush()][java.io.Writer#flush].
@@ -81,16 +58,6 @@ fun ByteArray.split(delimiter: ByteArray): List<ByteArray> {
     }
     lines += this.sliceArray(lastSplit until this.size)
     return lines
-}
-
-internal fun <T> Class<T>.getSuperclasses(): List<Class<in T>> {
-    val list = arrayListOf<Class<in T>>()
-    var superclass = this.superclass
-    while (superclass != null) {
-        list.add(superclass)
-        superclass = superclass.superclass
-    }
-    return list
 }
 
 fun <K, V> MutableMap<K, V>.putIfAbsentWithNull(key: K, value: V) {

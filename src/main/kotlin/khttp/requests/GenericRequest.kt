@@ -184,7 +184,7 @@ class GenericRequest internal constructor(
         } else if (any is Array<*>) {
             return JSONArray(any).toString()
         } else {
-            throw IllegalArgumentException("Could not coerce ${any.javaClass.simpleName} to JSON.")
+            throw IllegalArgumentException("Could not coerce  to JSON.")
         }
     }
 

@@ -5,7 +5,6 @@
  */
 package khttp.responses
 
-import khttp.extensions.getSuperclasses
 import khttp.extensions.split
 import khttp.extensions.splitLines
 import khttp.requests.GenericRequest
@@ -19,9 +18,7 @@ import java.io.File
 import java.io.IOException
 import java.io.InputStream
 import java.net.HttpURLConnection
-import java.net.ProtocolException
 import java.net.URL
-import java.net.URLConnection
 import java.nio.charset.Charset
 import java.util.*
 import java.util.zip.GZIPInputStream
@@ -38,32 +35,8 @@ class GenericResponse internal constructor(override val request: Request) : Resp
                 ).toTypedArray()
             )
 
-        private fun HttpURLConnection.forceMethod(method: String) {
-            try {
-                this.requestMethod = method
-            } catch (ex: ProtocolException) {
-                try {
-                    (this.javaClass.getDeclaredField("delegate").apply {
-                        this.isAccessible = true
-                    }.get(this) as HttpURLConnection?)?.forceMethod(method)
-                } catch (ex: NoSuchFieldException) {
-                    // ignore
-                }
-                (this.javaClass.getSuperclasses() + this.javaClass).forEach {
-                    try {
-                        it.getDeclaredField("method").apply { this.isAccessible = true }.set(this, method)
-                    } catch (ex: NoSuchFieldException) {
-                        // ignore
-                    }
-                }
-            }
-            check(this.requestMethod == method)
-        }
 
         internal val defaultStartInitializers: MutableList<(GenericResponse, HttpURLConnection) -> Unit> = arrayListOf(
-            { response, connection ->
-                connection.forceMethod(response.request.method)
-            },
             { response, connection ->
                 for ((key, value) in response.request.headers) {
                     connection.setRequestProperty(key, value)
@@ -260,8 +233,9 @@ class GenericResponse internal constructor(override val request: Request) : Resp
                 return this._encoding ?: throw IllegalStateException("Set to null by another thread")
             }
             this.headers["Content-Type"]?.let { it ->
-                val charset = it.split(";").asSequence().map { it.split("=") }.filter { it[0].trim().toLowerCase() == "charset" }
-                    .filter { it.size == 2 }.map { it[1] }.firstOrNull()
+                val charset =
+                    it.split(";").asSequence().map { it.split("=") }.filter { it[0].trim().toLowerCase() == "charset" }
+                        .filter { it.size == 2 }.map { it[1] }.firstOrNull()
                 return Charset.forName(charset?.toUpperCase() ?: Charsets.UTF_8.name())
             }
             return Charsets.UTF_8
@@ -356,36 +330,6 @@ class GenericResponse internal constructor(override val request: Request) : Resp
         return "<Response [${this.statusCode}]>"
     }
 
-    private fun <T : URLConnection> Class<T>.getField(name: String, instance: T): Any? {
-        (this.getSuperclasses() + this).forEach { clazz ->
-            try {
-                return clazz.getDeclaredField(name).apply { this.isAccessible = true }.get(instance)
-                    .apply { if (this == null) throw Exception() }
-            } catch (ex: Exception) {
-                try {
-                    val delegate = clazz.getDeclaredField("delegate").apply { this.isAccessible = true }.get(instance)
-                    if (delegate is URLConnection) {
-                        return delegate.javaClass.getField(name, delegate)
-                    }
-                } catch (ex: NoSuchFieldException) {
-                    // ignore
-                }
-            }
-        }
-        return null
-    }
-
-    private fun updateRequestHeaders() {
-        val headers = (this.request.headers as MutableMap<String, String>)
-        val requests = this.connection.javaClass.getField("requests", this.connection) ?: return
-        @Suppress("UNCHECKED_CAST")
-        val requestsHeaders = requests.javaClass.getDeclaredMethod("getHeaders").apply {
-            this.isAccessible = true
-        }.invoke(requests) as Map<String, List<String>>
-        headers += requestsHeaders.filterValues { it.isNotEmpty() }
-            .mapValues { it.value.joinToString(", ") }
-    }
-
     /**
      * Used to ensure that the proper connection has been made.
      */
@@ -395,7 +339,6 @@ class GenericResponse internal constructor(override val request: Request) : Resp
         } else {
             this.content // Download content if not
         }
-        this.updateRequestHeaders()
     }
 
 }
